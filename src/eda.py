@@ -1,107 +1,56 @@
+"""
+src/eda.py
+Exploratory Data Analysis - Gold Price Forecasting project
+Runs the full chain: raw Daily.csv -> clean -> log returns -> ADF -> ACF/PACF
+"""
+
 from pathlib import Path
-import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
-# ==========================================
-# Project Paths
-# ==========================================
+from data_loader import load_daily_usd
+from preprocessing import add_log_returns, save_processed
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_PATH = BASE_DIR / "data" / "raw" / "Daily.csv"
-# Figures path
-FIGURES_PATH = BASE_DIR / "outputs" / "figures"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_FIG_PATH = PROJECT_ROOT / "outputs" / "figures" / "acf_pacf_plot.png"
 
-# Create folder if it doesn't exist
-FIGURES_PATH.mkdir(parents=True, exist_ok=True)
-# ==========================================
-# Load Dataset
-# ==========================================
 
-df = pd.read_csv(DATA_PATH)
+def run_adf_test(series, label="Series"):
+    """Run Augmented Dickey-Fuller test and print results."""
+    result = adfuller(series.dropna(), autolag="AIC")
+    print(f"--- ADF Test: {label} ---")
+    print(f"ADF Statistic : {result[0]:.4f}")
+    print(f"p-value       : {result[1]:.6f}")
+    verdict = "STATIONARY" if result[1] < 0.05 else "NON-STATIONARY"
+    print(f"Verdict       : {verdict}\n")
+    return result[1]
 
-# ==========================================
-# Data Cleaning
-# ==========================================
 
-# Convert Date column to datetime
-df["Date"] = pd.to_datetime(df["Date"])
+def plot_acf_pacf(series, lags=40, save_path=DEFAULT_FIG_PATH):
+    """Plot ACF and PACF for a time series and save the figure."""
+    fig, axes = plt.subplots(2, 1, figsize=(14, 8))
+    plot_acf(series, lags=lags, ax=axes[0])
+    axes[0].set_title("ACF - Gold Log Returns (USD)")
+    plot_pacf(series, lags=lags, ax=axes[1], method="ywm")
+    axes[1].set_title("PACF - Gold Log Returns (USD)")
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150)
+    print(f"Saved plot: {save_path}")
+    plt.show()
 
-# Convert all price columns to numeric
-for col in df.columns[1:]:
-    df[col] = (
-        df[col]
-        .astype(str)
-        .str.replace(",", "", regex=False)
-    )
-    df[col] = pd.to_numeric(df[col], errors="coerce")
 
-# ==========================================
-# Basic Information
-# ==========================================
+if __name__ == "__main__":
+    # 1. Load raw data
+    raw_df = load_daily_usd()
 
-print("\n===== Dataset Information =====")
-print(df.info())
+    # 2. Compute log returns
+    df = add_log_returns(raw_df)
+    save_processed(df)
 
-print("\n===== Missing Values =====")
-print(df.isnull().sum())
+    # 3. Stationarity tests
+    run_adf_test(raw_df["USD"], "Raw USD Price")
+    run_adf_test(df["log_return"], "Log Returns")
 
-print("\n===== Statistical Summary =====")
-print(df.describe())
-
-# ==========================================
-# Gold Price (USD) Over Time
-# ==========================================
-
-plt.figure(figsize=(15, 6))
-plt.plot(df["Date"], df["USD"])
-plt.title("Gold Price in USD (1978 - 2023)")
-plt.xlabel("Date")
-plt.ylabel("Gold Price (USD)")
-plt.grid(True)
-plt.tight_layout()
-plt.savefig(FIGURES_PATH / "gold_price_usd.png", dpi=300)
-plt.close()
-
-# ==========================================
-# Distribution of USD Prices
-# ==========================================
-
-plt.figure(figsize=(8, 5))
-sns.histplot(df["USD"], bins=50, kde=True)
-plt.title("Distribution of Gold Prices (USD)")
-plt.xlabel("Gold Price")
-plt.ylabel("Frequency")
-plt.tight_layout()
-plt.savefig(FIGURES_PATH / "usd_distribution.png", dpi=300)
-plt.close()
-
-# ==========================================
-# Boxplot
-# ==========================================
-
-plt.figure(figsize=(6, 6))
-sns.boxplot(y=df["USD"])
-plt.title("Boxplot of Gold Prices (USD)")
-plt.tight_layout()
-plt.savefig(FIGURES_PATH / "usd_boxplot.png", dpi=300)
-plt.close()
-
-# ==========================================
-# 30-Day Moving Average
-# ==========================================
-
-df["MA30"] = df["USD"].rolling(window=30).mean()
-
-plt.figure(figsize=(15, 6))
-plt.plot(df["Date"], df["USD"], label="USD Price")
-plt.plot(df["Date"], df["MA30"], label="30-Day Moving Average", linewidth=2)
-
-plt.title("Gold Price with 30-Day Moving Average")
-plt.xlabel("Date")
-plt.ylabel("Gold Price (USD)")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.savefig(FIGURES_PATH / "moving_average_30.png", dpi=300)
-plt.close()
+    # 4. ACF / PACF
+    plot_acf_pacf(df["log_return"])
