@@ -14,6 +14,7 @@ from fetch_gap_data import fetch_gap_prices, EXTENDED_PATH
 from predict_next_day import predict_next_day, BEST_ORDER
 
 OUNCE_TO_GRAM = 31.1034768
+HISTORICAL_TEST_MAPE = 0.618  # ARIMA(1,1,1), measured on 2,326-day test set (Phase 3)
 
 st.set_page_config(page_title="Gold Price Forecast (USD)", layout="wide")
 st.title("💰 Gold Price Forecasting Dashboard")
@@ -77,6 +78,9 @@ with col1:
         st.metric(f"Forecast ({next_date.date()}) USD/gram", f"${pred_price_gram:,.2f}")
         st.metric(f"Forecast ({next_date.date()}) SAR", f"﷼{pred_sar:,.2f}")
         st.metric(f"Forecast ({next_date.date()}) SAR/gram", f"﷼{pred_sar_gram:,.2f}")
+
+        st.caption(f"📊 Historical test MAPE: {HISTORICAL_TEST_MAPE}% "
+                   f"(evaluated on 2,326 trading days, 2014-2023)")
     else:
         st.info("Click 'Update & Predict Tomorrow' to generate a forecast.")
 
