@@ -3,7 +3,7 @@ src/dashboard.py
 Streamlit dashboard - Gold Price Forecasting project
 Each click on "Update & Predict" re-fetches the latest real gold prices
 (filling any new gap via Yahoo Finance) and re-forecasts the next trading day,
-with a 95% confidence interval.
+with a 95% confidence interval (USD and SAR).
 """
 
 import streamlit as st
@@ -15,6 +15,7 @@ from fetch_gap_data import fetch_gap_prices, EXTENDED_PATH
 from predict_next_day import predict_next_day, BEST_ORDER
 
 OUNCE_TO_GRAM = 31.1034768
+USD_TO_SAR = 3.75
 HISTORICAL_TEST_MAPE = 0.618  # ARIMA(1,1,1), measured on 2,326-day test set (Phase 3)
 
 st.set_page_config(page_title="Gold Price Forecast (USD)", layout="wide")
@@ -74,14 +75,18 @@ with col1:
     if st.session_state.forecast is not None:
         next_date, pred_price, lower, upper = st.session_state.forecast
         pred_price_gram = pred_price / OUNCE_TO_GRAM
-        pred_sar = pred_price * 3.75
+        pred_sar = pred_price * USD_TO_SAR
         pred_sar_gram = pred_sar / OUNCE_TO_GRAM
+        lower_sar = lower * USD_TO_SAR
+        upper_sar = upper * USD_TO_SAR
 
         st.metric(f"Forecast ({next_date.date()}) USD", f"${pred_price:,.2f}")
         st.caption(f"95% CI: ${lower:,.2f} - ${upper:,.2f}")
 
         st.metric(f"Forecast ({next_date.date()}) USD/gram", f"${pred_price_gram:,.2f}")
         st.metric(f"Forecast ({next_date.date()}) SAR", f"﷼{pred_sar:,.2f}")
+        st.caption(f"95% CI: ﷼{lower_sar:,.2f} - ﷼{upper_sar:,.2f}")
+
         st.metric(f"Forecast ({next_date.date()}) SAR/gram", f"﷼{pred_sar_gram:,.2f}")
 
         st.caption(f"📊 Historical test MAPE: {HISTORICAL_TEST_MAPE}% "
