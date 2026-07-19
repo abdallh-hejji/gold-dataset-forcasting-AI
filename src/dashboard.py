@@ -3,7 +3,7 @@ src/dashboard.py
 Streamlit dashboard - Gold Price Forecasting project
 Each click on "Update & Predict" re-fetches the latest real gold prices
 (filling any new gap via Yahoo Finance) and re-forecasts the next trading day,
-with a 95% confidence interval (USD and SAR).
+with a 95% confidence interval (USD, SAR, and per-gram for both).
 """
 
 import streamlit as st
@@ -74,20 +74,30 @@ with col1:
 
     if st.session_state.forecast is not None:
         next_date, pred_price, lower, upper = st.session_state.forecast
+
         pred_price_gram = pred_price / OUNCE_TO_GRAM
+        lower_gram = lower / OUNCE_TO_GRAM
+        upper_gram = upper / OUNCE_TO_GRAM
+
         pred_sar = pred_price * USD_TO_SAR
-        pred_sar_gram = pred_sar / OUNCE_TO_GRAM
         lower_sar = lower * USD_TO_SAR
         upper_sar = upper * USD_TO_SAR
+
+        pred_sar_gram = pred_sar / OUNCE_TO_GRAM
+        lower_sar_gram = lower_sar / OUNCE_TO_GRAM
+        upper_sar_gram = upper_sar / OUNCE_TO_GRAM
 
         st.metric(f"Forecast ({next_date.date()}) USD", f"${pred_price:,.2f}")
         st.caption(f"95% CI: ${lower:,.2f} - ${upper:,.2f}")
 
         st.metric(f"Forecast ({next_date.date()}) USD/gram", f"${pred_price_gram:,.2f}")
+        st.caption(f"95% CI: ${lower_gram:,.2f} - ${upper_gram:,.2f}")
+
         st.metric(f"Forecast ({next_date.date()}) SAR", f"﷼{pred_sar:,.2f}")
         st.caption(f"95% CI: ﷼{lower_sar:,.2f} - ﷼{upper_sar:,.2f}")
 
         st.metric(f"Forecast ({next_date.date()}) SAR/gram", f"﷼{pred_sar_gram:,.2f}")
+        st.caption(f"95% CI: ﷼{lower_sar_gram:,.2f} - ﷼{upper_sar_gram:,.2f}")
 
         st.caption(f"📊 Historical test MAPE: {HISTORICAL_TEST_MAPE}% "
                    f"(evaluated on 2,326 trading days, 2014-2023)")
@@ -111,4 +121,4 @@ with col2:
     ax.grid(alpha=0.3)
     st.pyplot(fig)
 
-st.caption("Model refits on-demand on the full gap-filled history each time you click Update.")
+st.caption("Model refits on-demand on the full gap-filled history each time you click Update."
