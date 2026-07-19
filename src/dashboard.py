@@ -13,6 +13,8 @@ from data_loader import load_daily_usd
 from fetch_gap_data import fetch_gap_prices, EXTENDED_PATH
 from predict_next_day import predict_next_day, BEST_ORDER
 
+OUNCE_TO_GRAM = 31.1034768
+
 st.set_page_config(page_title="Gold Price Forecast (USD)", layout="wide")
 st.title("💰 Gold Price Forecasting Dashboard")
 st.caption("ARIMA(1,1,1) — trained on 1978-2023 history (World Gold Council) "
@@ -67,8 +69,12 @@ with col1:
 
     if st.session_state.forecast is not None:
         next_date, pred_price = st.session_state.forecast
+        pred_sar = pred_price * 3.75
+        pred_sar_gram = pred_sar / OUNCE_TO_GRAM
+
         st.metric(f"Forecast ({next_date.date()}) USD", f"${pred_price:,.2f}")
-        st.metric(f"Forecast ({next_date.date()}) SAR", f"﷼{pred_price * 3.75:,.2f}")
+        st.metric(f"Forecast ({next_date.date()}) SAR", f"﷼{pred_sar:,.2f}")
+        st.metric(f"Forecast ({next_date.date()}) SAR/gram", f"﷼{pred_sar_gram:,.2f}")
     else:
         st.info("Click 'Update & Predict Tomorrow' to generate a forecast.")
 
