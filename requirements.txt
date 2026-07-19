@@ -1,10 +1,6 @@
-pandas
+﻿pandas
 numpy
 matplotlib
-scikit-learn
 statsmodels
-tensorflow
-xgboost
-prophet
 yfinance
 streamlit
