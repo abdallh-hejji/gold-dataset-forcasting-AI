@@ -69,10 +69,12 @@ with col1:
 
     if st.session_state.forecast is not None:
         next_date, pred_price = st.session_state.forecast
+        pred_price_gram = pred_price / OUNCE_TO_GRAM
         pred_sar = pred_price * 3.75
         pred_sar_gram = pred_sar / OUNCE_TO_GRAM
 
         st.metric(f"Forecast ({next_date.date()}) USD", f"${pred_price:,.2f}")
+        st.metric(f"Forecast ({next_date.date()}) USD/gram", f"${pred_price_gram:,.2f}")
         st.metric(f"Forecast ({next_date.date()}) SAR", f"﷼{pred_sar:,.2f}")
         st.metric(f"Forecast ({next_date.date()}) SAR/gram", f"﷼{pred_sar_gram:,.2f}")
     else:
