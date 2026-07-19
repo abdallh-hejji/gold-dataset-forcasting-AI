@@ -2,7 +2,8 @@
 src/dashboard.py
 Streamlit dashboard - Gold Price Forecasting project
 Each click on "Update & Predict" re-fetches the latest real gold prices
-(filling any new gap via Yahoo Finance) and re-forecasts the next trading day.
+(filling any new gap via Yahoo Finance) and re-forecasts the next trading day,
+with a 95% confidence interval.
 """
 
 import streamlit as st
@@ -49,7 +50,7 @@ def update_and_refetch():
 # ----- Session state: keep the series and forecast across reruns -----
 if "series" not in st.session_state:
     st.session_state.series = load_extended_series()
-    st.session_state.forecast = None
+    st.session_state.forecast = None  # will hold (next_date, pred_price, lower, upper)
 
 col1, col2 = st.columns([1, 3])
 
@@ -57,8 +58,10 @@ with col1:
     if st.button("🔄 Update & Predict Tomorrow", type="primary"):
         with st.spinner("Fetching latest prices and refitting model..."):
             st.session_state.series = update_and_refetch()
-            next_date, pred_price = predict_next_day(st.session_state.series, order=BEST_ORDER)
-            st.session_state.forecast = (next_date, pred_price)
+            next_date, pred_price, lower, upper = predict_next_day(
+                st.session_state.series, order=BEST_ORDER
+            )
+            st.session_state.forecast = (next_date, pred_price, lower, upper)
 
 series = st.session_state.series
 last_date = series.index.max()
@@ -69,12 +72,14 @@ with col1:
     st.metric("Last Known Price (USD)", f"${last_price:,.2f}")
 
     if st.session_state.forecast is not None:
-        next_date, pred_price = st.session_state.forecast
+        next_date, pred_price, lower, upper = st.session_state.forecast
         pred_price_gram = pred_price / OUNCE_TO_GRAM
         pred_sar = pred_price * 3.75
         pred_sar_gram = pred_sar / OUNCE_TO_GRAM
 
         st.metric(f"Forecast ({next_date.date()}) USD", f"${pred_price:,.2f}")
+        st.caption(f"95% CI: ${lower:,.2f} - ${upper:,.2f}")
+
         st.metric(f"Forecast ({next_date.date()}) USD/gram", f"${pred_price_gram:,.2f}")
         st.metric(f"Forecast ({next_date.date()}) SAR", f"﷼{pred_sar:,.2f}")
         st.metric(f"Forecast ({next_date.date()}) SAR/gram", f"﷼{pred_sar_gram:,.2f}")
@@ -88,9 +93,13 @@ with col2:
     recent = series.loc[series.index >= last_date - pd.Timedelta(days=180)]
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.plot(recent.index, recent.values, label="Actual (last 180 days)")
+
     if st.session_state.forecast is not None:
-        next_date, pred_price = st.session_state.forecast
-        ax.scatter([next_date], [pred_price], color="red", zorder=5, label="Forecast")
+        next_date, pred_price, lower, upper = st.session_state.forecast
+        ax.errorbar([next_date], [pred_price],
+                    yerr=[[pred_price - lower], [upper - pred_price]],
+                    fmt="o", color="red", capsize=5, label="Forecast (95% CI)")
+
     ax.set_xlabel("Date")
     ax.set_ylabel("USD")
     ax.legend()

@@ -1,7 +1,8 @@
 """
 src/predict_next_day.py
 Production-style inference: fit the best model (ARIMA(1,1,1)) on all available
-history and forecast the next trading day's USD gold price.
+history and forecast the next trading day's USD gold price, with a 95%
+confidence interval.
 Gold Price Forecasting project
 """
 
@@ -64,13 +65,30 @@ def append_latest_price(series, price, date):
     return updated.sort_index()
 
 
-def predict_next_day(series, order=BEST_ORDER):
+def predict_next_day(series, order=BEST_ORDER, alpha=0.05):
+    """
+    Fit SARIMAX on the full series and forecast one step ahead.
+
+    Returns
+    -------
+    next_date : pd.Timestamp
+    pred_price : float
+    lower : float - lower bound of the (1-alpha) confidence interval
+    upper : float - upper bound of the (1-alpha) confidence interval
+    """
     model = SARIMAX(series, order=order,
                      enforce_stationarity=False, enforce_invertibility=False)
     fitted = model.fit(disp=False)
-    forecast = fitted.forecast(steps=1)
+
+    forecast_result = fitted.get_forecast(steps=1)
+    pred_price = forecast_result.predicted_mean.iloc[0]
+
+    conf_int = forecast_result.conf_int(alpha=alpha)
+    lower = conf_int.iloc[0, 0]
+    upper = conf_int.iloc[0, 1]
+
     next_date = series.index[-1] + pd.tseries.offsets.BDay(1)
-    return next_date, forecast.iloc[0]
+    return next_date, pred_price, lower, upper
 
 
 if __name__ == "__main__":
@@ -85,8 +103,8 @@ if __name__ == "__main__":
         series = append_latest_price(series, args.price, args.date)
         print(f"Using manually provided latest price: {args.price:.2f} USD on {args.date}")
 
-    next_date, pred_price = predict_next_day(series)
+    next_date, pred_price, lower, upper = predict_next_day(series)
 
     print(f"\nForecast for next trading day ({next_date.date()}):")
-    print(f"  USD: {pred_price:.2f}")
-    print(f"  SAR: {pred_price * 3.75:.2f}")
+    print(f"  USD: {pred_price:.2f}  (95% CI: {lower:.2f} - {upper:.2f})")
+    print(f"  SAR: {pred_price * 3.75:.2f}  (95% CI: {lower * 3.75:.2f} - {upper * 3.75:.2f})")
