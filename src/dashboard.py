@@ -121,4 +121,4 @@ with col2:
     ax.grid(alpha=0.3)
     st.pyplot(fig)
 
-st.caption("Model refits on-demand on the full gap-filled history each time you click Update."
+st.caption("Model refits on-demand on the full gap-filled history each time you click Update.")
