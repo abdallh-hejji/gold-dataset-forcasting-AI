@@ -48,6 +48,12 @@ def update_and_refetch():
     return series
 
 
+def format_ci(lower, upper, symbol="$"):
+    """Render a confidence interval as clear, plain text (avoids Streamlit
+    misinterpreting a bare '-' as markdown formatting)."""
+    return f"95% CI  —  Low: {symbol}{lower:,.2f}   High: {symbol}{upper:,.2f}"
+
+
 # ----- Session state: keep the series and forecast across reruns -----
 if "series" not in st.session_state:
     st.session_state.series = load_extended_series()
@@ -88,16 +94,16 @@ with col1:
         upper_sar_gram = upper_sar / OUNCE_TO_GRAM
 
         st.metric(f"Forecast ({next_date.date()}) USD", f"${pred_price:,.2f}")
-        st.caption(f"95% CI: ${lower:,.2f} - ${upper:,.2f}")
+        st.caption(format_ci(lower, upper, "$"))
 
         st.metric(f"Forecast ({next_date.date()}) USD/gram", f"${pred_price_gram:,.2f}")
-        st.caption(f"95% CI: ${lower_gram:,.2f} - ${upper_gram:,.2f}")
+        st.caption(format_ci(lower_gram, upper_gram, "$"))
 
         st.metric(f"Forecast ({next_date.date()}) SAR", f"﷼{pred_sar:,.2f}")
-        st.caption(f"95% CI: ﷼{lower_sar:,.2f} - ﷼{upper_sar:,.2f}")
+        st.caption(format_ci(lower_sar, upper_sar, "﷼"))
 
         st.metric(f"Forecast ({next_date.date()}) SAR/gram", f"﷼{pred_sar_gram:,.2f}")
-        st.caption(f"95% CI: ﷼{lower_sar_gram:,.2f} - ﷼{upper_sar_gram:,.2f}")
+        st.caption(format_ci(lower_sar_gram, upper_sar_gram, "﷼"))
 
         st.caption(f"📊 Historical test MAPE: {HISTORICAL_TEST_MAPE}% "
                    f"(evaluated on 2,326 trading days, 2014-2023)")
