@@ -49,9 +49,10 @@ def update_and_refetch():
 
 
 def format_ci(lower, upper, symbol="$"):
-    """Render a confidence interval as clear, plain text (avoids Streamlit
-    misinterpreting a bare '-' as markdown formatting)."""
-    return f"95% CI  —  Low: {symbol}{lower:,.2f}   High: {symbol}{upper:,.2f}"
+    """Render a confidence interval with Low in red and High in green
+    using Streamlit's markdown color syntax."""
+    return (f"95% CI — :red[Low: {symbol}{lower:,.2f}]   "
+            f":green[High: {symbol}{upper:,.2f}]")
 
 
 # ----- Session state: keep the series and forecast across reruns -----
@@ -74,9 +75,18 @@ series = st.session_state.series
 last_date = series.index.max()
 last_price = series.iloc[-1]
 
+# Compare today's last known price to the previous available day, for a
+# color-coded delta (green = up, red = down) shown next to the metric.
+prev_price = series.iloc[-2] if len(series) > 1 else None
+price_delta = (last_price - prev_price) if prev_price is not None else None
+
 with col1:
     st.metric("Last Known Date", str(last_date.date()))
-    st.metric("Last Known Price (USD)", f"${last_price:,.2f}")
+    st.metric(
+        "Last Known Price (USD)",
+        f"${last_price:,.2f}",
+        delta=f"{price_delta:,.2f}" if price_delta is not None else None,
+    )
 
     if st.session_state.forecast is not None:
         next_date, pred_price, lower, upper = st.session_state.forecast
@@ -94,16 +104,16 @@ with col1:
         upper_sar_gram = upper_sar / OUNCE_TO_GRAM
 
         st.metric(f"Forecast ({next_date.date()}) USD", f"${pred_price:,.2f}")
-        st.caption(format_ci(lower, upper, "$"))
+        st.markdown(format_ci(lower, upper, "$"))
 
         st.metric(f"Forecast ({next_date.date()}) USD/gram", f"${pred_price_gram:,.2f}")
-        st.caption(format_ci(lower_gram, upper_gram, "$"))
+        st.markdown(format_ci(lower_gram, upper_gram, "$"))
 
         st.metric(f"Forecast ({next_date.date()}) SAR", f"﷼{pred_sar:,.2f}")
-        st.caption(format_ci(lower_sar, upper_sar, "﷼"))
+        st.markdown(format_ci(lower_sar, upper_sar, "﷼"))
 
         st.metric(f"Forecast ({next_date.date()}) SAR/gram", f"﷼{pred_sar_gram:,.2f}")
-        st.caption(format_ci(lower_sar_gram, upper_sar_gram, "﷼"))
+        st.markdown(format_ci(lower_sar_gram, upper_sar_gram, "﷼"))
 
         st.caption(f"📊 Historical test MAPE: {HISTORICAL_TEST_MAPE}% "
                    f"(evaluated on 2,326 trading days, 2014-2023)")
