@@ -177,3 +177,10 @@ if SUMMARY_PATH.exists():
     )
 else:
     st.caption("Model comparison table not found - run compare_models.py to generate it.")
+    FIG_PATH = PROJECT_ROOT / "outputs" / "figures" / "model_comparison.png"
+
+    with st.expander("📊 Show full model comparison chart (RMSE & MAPE, all models)"):
+        if FIG_PATH.exists():
+            st.image(str(FIG_PATH), use_container_width=True)
+        else:
+            st.caption("Chart not found - run compare_models.py to generate it.")
