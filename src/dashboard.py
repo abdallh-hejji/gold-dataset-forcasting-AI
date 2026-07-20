@@ -18,14 +18,24 @@ from predict_next_day import predict_next_day, BEST_ORDER
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SUMMARY_PATH = PROJECT_ROOT / "outputs" / "predictions" / "all_models_summary.csv"
 FIG_PATH = PROJECT_ROOT / "outputs" / "figures" / "model_comparison.png"
+GITHUB_REPO_URL = "https://github.com/abdallh-hejji/gold-dataset-forcasting-AI"
 
 OUNCE_TO_GRAM = 31.1034768
 USD_TO_SAR = 3.75
 HISTORICAL_TEST_MAPE = 0.618  # ARIMA(1,1,1), measured on 2,326-day test set (Phase 3)
 SELECTED_MODEL_LABEL = "ARIMA(1, 1, 1)"  # must match the label used in all_models_summary.csv
 
+# Emoji written as Unicode escapes (\U000XXXXX) instead of literal characters -
+# avoids encoding/display issues in some editors while rendering identically
+# in the browser.
+EMOJI_MONEY_BAG = "\U0001F4B0"     # 💰
+EMOJI_CHART_UP = "\U0001F4C8"      # 📈
+EMOJI_BAR_CHART = "\U0001F4CA"     # 📊
+EMOJI_REFRESH = "\U0001F504"       # 🔄
+EMOJI_LINK = "\U0001F517"          # 🔗
+
 st.set_page_config(page_title="Gold Price Forecast (USD)", layout="wide")
-st.title("💰 Gold Price Forecasting Dashboard")
+st.title(f"{EMOJI_MONEY_BAG} Gold Price Forecasting Dashboard")
 st.caption("ARIMA(1,1,1) — trained on 1978-2023 history (World Gold Council) "
            "+ live gap-fill (Yahoo Finance GC=F)")
 
@@ -69,7 +79,7 @@ if "series" not in st.session_state:
 col1, col2 = st.columns([1, 3])
 
 with col1:
-    if st.button("🔄 Update & Predict Tomorrow", type="primary"):
+    if st.button(f"{EMOJI_REFRESH} Update & Predict Tomorrow", type="primary"):
         with st.spinner("Fetching latest prices and refitting model..."):
             st.session_state.series = update_and_refetch()
             next_date, pred_price, lower, upper = predict_next_day(
@@ -129,7 +139,7 @@ with col1:
         st.metric(f"Forecast ({next_date.date()}) SAR/gram", f"﷼{pred_sar_gram:,.2f}")
         st.markdown(format_ci(lower_sar_gram, upper_sar_gram, "﷼"))
 
-        st.caption(f"📊 Historical test MAPE: {HISTORICAL_TEST_MAPE}% "
+        st.caption(f"{EMOJI_BAR_CHART} Historical test MAPE: {HISTORICAL_TEST_MAPE}% "
                    f"(evaluated on 2,326 trading days, 2014-2023)")
     else:
         st.info("Click 'Update & Predict Tomorrow' to generate a forecast.")
@@ -155,7 +165,7 @@ st.caption("Model refits on-demand on the full gap-filled history each time you 
 
 # ----- Model comparison table -----
 st.divider()
-st.subheader("📈 Why ARIMA(1,1,1)?")
+st.subheader(f"{EMOJI_CHART_UP} Why ARIMA(1,1,1)?")
 st.caption("Selected from 11 models compared in Phase 3, based on RMSE/MAPE on a "
            "2,326-day held-out test set. Lower is better.")
 
@@ -180,8 +190,14 @@ else:
     st.caption("Model comparison table not found - run compare_models.py to generate it.")
 
 # ----- Full model comparison chart (expandable) -----
-with st.expander("📊 Show full model comparison chart (RMSE & MAPE, all models)"):
+with st.expander(f"{EMOJI_BAR_CHART} Show full model comparison chart (RMSE & MAPE, all models)"):
     if FIG_PATH.exists():
         st.image(str(FIG_PATH), use_container_width=True)
     else:
         st.caption("Chart not found - run compare_models.py to generate it.")
+
+# ----- Footer: link to full source code and analysis -----
+st.divider()
+st.caption(
+    f"{EMOJI_LINK} [View full analysis & code on GitHub]({GITHUB_REPO_URL})"
+)
