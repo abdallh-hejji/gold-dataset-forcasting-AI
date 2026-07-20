@@ -17,6 +17,7 @@ from predict_next_day import predict_next_day, BEST_ORDER
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SUMMARY_PATH = PROJECT_ROOT / "outputs" / "predictions" / "all_models_summary.csv"
+FIG_PATH = PROJECT_ROOT / "outputs" / "figures" / "model_comparison.png"
 
 OUNCE_TO_GRAM = 31.1034768
 USD_TO_SAR = 3.75
@@ -177,10 +178,10 @@ if SUMMARY_PATH.exists():
     )
 else:
     st.caption("Model comparison table not found - run compare_models.py to generate it.")
-    FIG_PATH = PROJECT_ROOT / "outputs" / "figures" / "model_comparison.png"
 
-    with st.expander("📊 Show full model comparison chart (RMSE & MAPE, all models)"):
-        if FIG_PATH.exists():
-            st.image(str(FIG_PATH), use_container_width=True)
-        else:
-            st.caption("Chart not found - run compare_models.py to generate it.")
+# ----- Full model comparison chart (expandable) -----
+with st.expander("📊 Show full model comparison chart (RMSE & MAPE, all models)"):
+    if FIG_PATH.exists():
+        st.image(str(FIG_PATH), use_container_width=True)
+    else:
+        st.caption("Chart not found - run compare_models.py to generate it.")
