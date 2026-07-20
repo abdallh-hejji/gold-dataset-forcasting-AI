@@ -54,36 +54,38 @@ The deployed dashboard:
 ---
 
 ## Project Structure
+
+\`\`\`
 gold-dataset-forcasting-AI/
 ├── data/
-│ ├── raw/ # Original World Gold Council datasets (8 frequencies)
-│ └── processed/ # Cleaned & gap-filled series
+│   ├── raw/              # Original World Gold Council datasets (8 frequencies)
+│   └── processed/        # Cleaned & gap-filled series
 ├── notebooks/
-│ └── eda.ipynb
+│   └── eda.ipynb
 ├── outputs/
-│ ├── figures/ # ACF/PACF, residual diagnostics, model comparison charts
-│ ├── models/ # Saved LSTM & XGBoost models
-│ └── predictions/ # Per-model prediction CSVs + summary table
+│   ├── figures/          # ACF/PACF, residual diagnostics, model comparison charts
+│   ├── models/           # Saved LSTM & XGBoost models
+│   └── predictions/      # Per-model prediction CSVs + summary table
 ├── src/
-│ ├── data_loader.py
-│ ├── preprocessing.py
-│ ├── eda.py
-│ ├── train_baseline.py
-│ ├── train_arima.py
-│ ├── train_lstm.py
-│ ├── train_lstm_returns.py
-│ ├── train_xgboost.py
-│ ├── train_prophet.py
-│ ├── compare_models.py
-│ ├── evaluation.py
-│ ├── fetch_gap_data.py
-│ ├── predict_next_day.py
-│ ├── convert_to_sar.py
-│ ├── utils.py
-│ └── dashboard.py
+│   ├── data_loader.py
+│   ├── preprocessing.py
+│   ├── eda.py
+│   ├── train_baseline.py
+│   ├── train_arima.py
+│   ├── train_lstm.py
+│   ├── train_lstm_returns.py
+│   ├── train_xgboost.py
+│   ├── train_prophet.py
+│   ├── compare_models.py
+│   ├── evaluation.py
+│   ├── fetch_gap_data.py
+│   ├── predict_next_day.py
+│   ├── convert_to_sar.py
+│   ├── utils.py
+│   └── dashboard.py
 ├── requirements.txt
 └── README.md
----
+\`\`\`
 
 ## Running Locally
 
