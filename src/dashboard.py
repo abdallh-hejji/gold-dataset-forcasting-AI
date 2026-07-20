@@ -6,6 +6,7 @@ Each click on "Update & Predict" re-fetches the latest real gold prices
 with a 95% confidence interval (USD, SAR, and per-gram for both).
 """
 
+from pathlib import Path
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -14,9 +15,13 @@ from data_loader import load_daily_usd
 from fetch_gap_data import fetch_gap_prices, EXTENDED_PATH
 from predict_next_day import predict_next_day, BEST_ORDER
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SUMMARY_PATH = PROJECT_ROOT / "outputs" / "predictions" / "all_models_summary.csv"
+
 OUNCE_TO_GRAM = 31.1034768
 USD_TO_SAR = 3.75
 HISTORICAL_TEST_MAPE = 0.618  # ARIMA(1,1,1), measured on 2,326-day test set (Phase 3)
+SELECTED_MODEL_LABEL = "ARIMA(1, 1, 1)"  # must match the label used in all_models_summary.csv
 
 st.set_page_config(page_title="Gold Price Forecast (USD)", layout="wide")
 st.title("💰 Gold Price Forecasting Dashboard")
@@ -103,7 +108,15 @@ with col1:
         lower_sar_gram = lower_sar / OUNCE_TO_GRAM
         upper_sar_gram = upper_sar / OUNCE_TO_GRAM
 
-        st.metric(f"Forecast ({next_date.date()}) USD", f"${pred_price:,.2f}")
+        # Forecast vs. last known price - shows whether the model expects
+        # tomorrow to be higher (green) or lower (red) than today.
+        forecast_delta = pred_price - last_price
+
+        st.metric(
+            f"Forecast ({next_date.date()}) USD",
+            f"${pred_price:,.2f}",
+            delta=f"{forecast_delta:,.2f} vs last known",
+        )
         st.markdown(format_ci(lower, upper, "$"))
 
         st.metric(f"Forecast ({next_date.date()}) USD/gram", f"${pred_price_gram:,.2f}")
@@ -138,3 +151,29 @@ with col2:
     st.pyplot(fig)
 
 st.caption("Model refits on-demand on the full gap-filled history each time you click Update.")
+
+# ----- Model comparison table -----
+st.divider()
+st.subheader("📈 Why ARIMA(1,1,1)?")
+st.caption("Selected from 11 models compared in Phase 3, based on RMSE/MAPE on a "
+           "2,326-day held-out test set. Lower is better.")
+
+if SUMMARY_PATH.exists():
+    summary_df = pd.read_csv(SUMMARY_PATH).sort_values("rmse").head(5).reset_index(drop=True)
+    summary_df["rmse"] = summary_df["rmse"].round(3)
+    summary_df["mape"] = summary_df["mape"].round(3)
+    summary_df = summary_df.rename(
+        columns={"model": "Model", "rmse": "RMSE", "mape": "MAPE (%)"}
+    )
+
+    def highlight_selected(row):
+        is_selected = row["Model"] == SELECTED_MODEL_LABEL
+        return ["background-color: #1a3d1a" if is_selected else "" for _ in row]
+
+    st.dataframe(
+        summary_df.style.apply(highlight_selected, axis=1),
+        hide_index=True,
+        use_container_width=True,
+    )
+else:
+    st.caption("Model comparison table not found - run compare_models.py to generate it.")
