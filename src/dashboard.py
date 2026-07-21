@@ -3,7 +3,7 @@ src/dashboard.py
 Streamlit dashboard - Gold Price Forecasting project
 Each click on "Update & Predict" re-fetches the latest real gold prices
 (filling any new gap via Yahoo Finance) and re-forecasts the next trading day,
-with a 95% confidence interval (USD, SAR, and per-gram for both).
+with a 95% confidence interval. Currency display (USD/SAR) is togglable.
 """
 
 from pathlib import Path
@@ -25,16 +25,15 @@ USD_TO_SAR = 3.75
 HISTORICAL_TEST_MAPE = 0.618  # ARIMA(1,1,1), measured on 2,326-day test set (Phase 3)
 SELECTED_MODEL_LABEL = "ARIMA(1, 1, 1)"  # must match the label used in all_models_summary.csv
 
-# Emoji written as Unicode escapes (\U000XXXXX) instead of literal characters -
-# avoids encoding/display issues in some editors while rendering identically
-# in the browser.
+# Emoji written as Unicode escapes instead of literal characters - avoids
+# encoding/display issues in some editors while rendering identically in browser.
 EMOJI_MONEY_BAG = "\U0001F4B0"     # 💰
 EMOJI_CHART_UP = "\U0001F4C8"      # 📈
 EMOJI_BAR_CHART = "\U0001F4CA"     # 📊
 EMOJI_REFRESH = "\U0001F504"       # 🔄
 EMOJI_LINK = "\U0001F517"          # 🔗
 
-st.set_page_config(page_title="Gold Price Forecast (USD)", layout="wide")
+st.set_page_config(page_title="Gold Price Forecast", layout="wide")
 st.title(f"{EMOJI_MONEY_BAG} Gold Price Forecasting Dashboard")
 st.caption("ARIMA(1,1,1) — trained on 1978-2023 history (World Gold Council) "
            "+ live gap-fill (Yahoo Finance GC=F)")
@@ -71,6 +70,16 @@ def format_ci(lower, upper, symbol="$"):
             f":green[High: {symbol}{upper:,.2f}]")
 
 
+def convert(value_usd_per_ounce, currency, unit):
+    """Convert a USD-per-ounce value to the selected currency/unit combo."""
+    value = value_usd_per_ounce
+    if currency == "SAR":
+        value = value * USD_TO_SAR
+    if unit == "gram":
+        value = value / OUNCE_TO_GRAM
+    return value
+
+
 # ----- Session state: keep the series and forecast across reruns -----
 if "series" not in st.session_state:
     st.session_state.series = load_extended_series()
@@ -87,57 +96,43 @@ with col1:
             )
             st.session_state.forecast = (next_date, pred_price, lower, upper)
 
+    # ----- Currency / unit toggle -----
+    currency = st.radio("Currency", ["USD", "SAR"], horizontal=True)
+    unit = st.radio("Unit", ["ounce", "gram"], horizontal=True)
+    symbol = "$" if currency == "USD" else "\uFDFC"  # ﷼
+
 series = st.session_state.series
 last_date = series.index.max()
 last_price = series.iloc[-1]
 
-# Compare today's last known price to the previous available day, for a
-# color-coded delta (green = up, red = down) shown next to the metric.
 prev_price = series.iloc[-2] if len(series) > 1 else None
 price_delta = (last_price - prev_price) if prev_price is not None else None
 
 with col1:
     st.metric("Last Known Date", str(last_date.date()))
+
+    last_price_conv = convert(last_price, currency, unit)
+    delta_conv = convert(price_delta, currency, unit) if price_delta is not None else None
     st.metric(
-        "Last Known Price (USD)",
-        f"${last_price:,.2f}",
-        delta=f"{price_delta:,.2f}" if price_delta is not None else None,
+        f"Last Known Price ({currency}/{unit})",
+        f"{symbol}{last_price_conv:,.2f}",
+        delta=f"{delta_conv:,.2f}" if delta_conv is not None else None,
     )
 
     if st.session_state.forecast is not None:
         next_date, pred_price, lower, upper = st.session_state.forecast
 
-        pred_price_gram = pred_price / OUNCE_TO_GRAM
-        lower_gram = lower / OUNCE_TO_GRAM
-        upper_gram = upper / OUNCE_TO_GRAM
-
-        pred_sar = pred_price * USD_TO_SAR
-        lower_sar = lower * USD_TO_SAR
-        upper_sar = upper * USD_TO_SAR
-
-        pred_sar_gram = pred_sar / OUNCE_TO_GRAM
-        lower_sar_gram = lower_sar / OUNCE_TO_GRAM
-        upper_sar_gram = upper_sar / OUNCE_TO_GRAM
-
-        # Forecast vs. last known price - shows whether the model expects
-        # tomorrow to be higher (green) or lower (red) than today.
-        forecast_delta = pred_price - last_price
+        pred_conv = convert(pred_price, currency, unit)
+        lower_conv = convert(lower, currency, unit)
+        upper_conv = convert(upper, currency, unit)
+        forecast_delta = pred_conv - last_price_conv
 
         st.metric(
-            f"Forecast ({next_date.date()}) USD",
-            f"${pred_price:,.2f}",
+            f"Forecast ({next_date.date()}) {currency}/{unit}",
+            f"{symbol}{pred_conv:,.2f}",
             delta=f"{forecast_delta:,.2f} vs last known",
         )
-        st.markdown(format_ci(lower, upper, "$"))
-
-        st.metric(f"Forecast ({next_date.date()}) USD/gram", f"${pred_price_gram:,.2f}")
-        st.markdown(format_ci(lower_gram, upper_gram, "$"))
-
-        st.metric(f"Forecast ({next_date.date()}) SAR", f"﷼{pred_sar:,.2f}")
-        st.markdown(format_ci(lower_sar, upper_sar, "﷼"))
-
-        st.metric(f"Forecast ({next_date.date()}) SAR/gram", f"﷼{pred_sar_gram:,.2f}")
-        st.markdown(format_ci(lower_sar_gram, upper_sar_gram, "﷼"))
+        st.markdown(format_ci(lower_conv, upper_conv, symbol))
 
         st.caption(f"{EMOJI_BAR_CHART} Historical test MAPE: {HISTORICAL_TEST_MAPE}% "
                    f"(evaluated on 2,326 trading days, 2014-2023)")
@@ -146,17 +141,22 @@ with col1:
 
 with col2:
     recent = series.loc[series.index >= last_date - pd.Timedelta(days=180)]
+    recent_conv = recent.apply(lambda v: convert(v, currency, unit))
+
     fig, ax = plt.subplots(figsize=(10, 4))
-    ax.plot(recent.index, recent.values, label="Actual (last 180 days)")
+    ax.plot(recent.index, recent_conv.values, label="Actual (last 180 days)")
 
     if st.session_state.forecast is not None:
         next_date, pred_price, lower, upper = st.session_state.forecast
-        ax.errorbar([next_date], [pred_price],
-                    yerr=[[pred_price - lower], [upper - pred_price]],
+        pred_conv = convert(pred_price, currency, unit)
+        lower_conv = convert(lower, currency, unit)
+        upper_conv = convert(upper, currency, unit)
+        ax.errorbar([next_date], [pred_conv],
+                    yerr=[[pred_conv - lower_conv], [upper_conv - pred_conv]],
                     fmt="o", color="red", capsize=5, label="Forecast (95% CI)")
 
     ax.set_xlabel("Date")
-    ax.set_ylabel("USD")
+    ax.set_ylabel(f"{currency} / {unit}")
     ax.legend()
     ax.grid(alpha=0.3)
     st.pyplot(fig)
