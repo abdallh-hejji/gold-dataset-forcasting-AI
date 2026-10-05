@@ -69,6 +69,15 @@ def predict_next_day(series, order=BEST_ORDER, alpha=0.05):
     """
     Fit SARIMAX on the full series and forecast one step ahead.
 
+    Uses a plain positional (RangeIndex) series internally for the model fit -
+    the real DatetimeIndex is NOT passed to SARIMAX. This avoids relying on
+    statsmodels' date-frequency inference, which breaks when the underlying
+    date series has irregular gaps (e.g. from merging two data sources with
+    slightly different market holiday calendars) or when a newer
+    statsmodels/pandas version changes how it validates date indexes.
+    The real next calendar date is computed separately, from the original
+    DatetimeIndex, purely for display purposes.
+
     Returns
     -------
     next_date : pd.Timestamp
@@ -76,7 +85,9 @@ def predict_next_day(series, order=BEST_ORDER, alpha=0.05):
     lower : float - lower bound of the (1-alpha) confidence interval
     upper : float - upper bound of the (1-alpha) confidence interval
     """
-    model = SARIMAX(series, order=order,
+    positional_series = pd.Series(series.values, index=pd.RangeIndex(len(series)))
+
+    model = SARIMAX(positional_series, order=order,
                      enforce_stationarity=False, enforce_invertibility=False)
     fitted = model.fit(disp=False)
 
